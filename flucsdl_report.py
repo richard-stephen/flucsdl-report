@@ -1,6 +1,10 @@
+import re
+
 from bs4 import BeautifulSoup
 import pandas as pd
 import streamlit as st
+
+ROOM_HEADING_RE = re.compile(r"^Room\s+(\S+)\s+\((.+)\)\s*$")
 
 def html_processor(html_content):
 
@@ -10,7 +14,13 @@ def html_processor(html_content):
     sections = soup.find_all(string= lambda text: text.startswith("Room"))
     room_data = []
     for section in sections[2:]:
-        section_name = section.text
+        match = ROOM_HEADING_RE.match(section.text)
+        if match:
+            room_id = match.group(1).strip()
+            room_name = match.group(2).strip()
+        else:
+            room_id = ""
+            room_name = section.text.strip()
         next_element = section.find_next()
         if next_element:
             if next_element.name == 'hr':
@@ -26,8 +36,8 @@ def html_processor(html_content):
                     mindf = float(cells[2].text.strip().replace('%',""))
                     avgdf = float(cells[3].text.strip().replace('%',""))
                     maxdf = float(cells[4].text.strip().replace('%',""))            
-                    room_data.append([section_name,mindf,avgdf,maxdf])
-    df = pd.DataFrame(room_data, columns=["Room details", "Min Daylight Factor (%)", "Avg Daylight Factor (%)", "Max Daylight Factor (%)"])
+                    room_data.append([room_id, room_name, mindf, avgdf, maxdf])
+    df = pd.DataFrame(room_data, columns=["Room ID", "Room name", "Min Daylight Factor (%)", "Avg Daylight Factor (%)", "Max Daylight Factor (%)"])
     return df
 
 st.title("Daylight Analysis Report Converter")
